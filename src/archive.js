@@ -1,8 +1,8 @@
 import JSZip from 'jszip';
 
-const MAX_ZIP_BYTES = 50 * 1024 * 1024;
-const MAX_FILES = 200;
-const MAX_TEXT_CHARS = 8 * 1024 * 1024;
+const MAX_ZIP_BYTES = 200 * 1024 * 1024;
+const MAX_FILES = 500;
+const MAX_TEXT_CHARS = 32 * 1024 * 1024;
 const TEXT_EXTENSIONS = /\.(txt|log|json|csv|md)$/i;
 
 function csvCells(line) {
@@ -61,7 +61,7 @@ export async function extractImportText(file) {
   if (!/\.zip$/i.test(file.name)) {
     return { text: normalizeByName(await file.text(), file.name), files: [file.name], skipped: 0 };
   }
-  if (file.size > MAX_ZIP_BYTES) throw new Error('ZIP 不能超过 50 MB。');
+  if (file.size > MAX_ZIP_BYTES) throw new Error('ZIP 不能超过 200 MB。');
 
   let zip;
   try { zip = await JSZip.loadAsync(await file.arrayBuffer()); }
@@ -78,7 +78,7 @@ export async function extractImportText(file) {
   for (const entry of candidates) {
     const content = normalizeByName(await entry.async('string'), entry.name);
     total += content.length;
-    if (total > MAX_TEXT_CHARS) throw new Error('ZIP 解压后的聊天文字不能超过 8 MB。');
+    if (total > MAX_TEXT_CHARS) throw new Error('ZIP 解压后的聊天文字不能超过 32 MB。');
     parts.push(`\n${content}`);
   }
   return {

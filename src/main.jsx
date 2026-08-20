@@ -112,7 +112,7 @@ function NewPersonModal({ initial, onClose, onSave, onDelete }) {
     <label className="drop-zone">
       <Upload size={22} />
       <span>{importing ? '正在本地解压与读取…' : fileName || (initial?.samples?.length ? `已保存 ${initial.samples.length} 条语言样本` : '导入聊天记录或 ZIP')}</span>
-      <small>支持 ZIP、TXT、LOG、JSON、CSV；ZIP 全程在浏览器本地解压</small>
+      <small>支持最大 200 MB 的 ZIP、TXT、LOG、JSON、CSV；ZIP 全程在浏览器本地解压</small>
       <input type="file" accept=".zip,.txt,.log,.json,.csv,.md,application/zip,text/plain,application/json,text/csv" onChange={chatChange} hidden disabled={importing} />
     </label>
     {raw && <div className="parse-result"><Check size={15} /> 已从 {importMeta?.files.length ?? 1} 个文件识别 {parsed.length} 条“{speaker || '全部参与者'}”的语言样本{importMeta?.skipped ? `，忽略 ${importMeta.skipped} 个非聊天文件` : ''}</div>}

@@ -33,3 +33,12 @@ test('rejects zip archives without chat text files', async () => {
   const file = await zipFile({ 'photo.png': 'binary' });
   await assert.rejects(() => extractImportText(file), /没有找到/);
 });
+
+test('rejects zip archives larger than 200 MB before reading them', async () => {
+  const oversized = {
+    name: 'too-large.zip',
+    size: 200 * 1024 * 1024 + 1,
+    arrayBuffer: async () => { throw new Error('should not read'); },
+  };
+  await assert.rejects(() => extractImportText(oversized), /200 MB/);
+});
