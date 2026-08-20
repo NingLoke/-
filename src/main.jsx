@@ -11,6 +11,7 @@ import { makeDemoReply, parseChatRecord } from './parser.js';
 import { extractImportText } from './archive.js';
 import { checkAiConnection, requestAiReply } from './api.js';
 import { buildPersonaPayload } from './persona.js';
+import { scrollConversationToBottom } from './ui-utils.js';
 import './styles.css';
 
 const id = () => globalThis.crypto?.randomUUID?.() ?? `echo-${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -201,7 +202,9 @@ function Chat({ person, messages, onSend, sending, onEdit, consent, aiState, onO
   const [text, setText] = useState('');
   const [image, setImage] = useState('');
   const bottom = useRef(null);
-  useEffect(() => bottom.current?.scrollIntoView({ behavior: 'smooth' }), [messages.length, sending]);
+  useEffect(() => {
+    scrollConversationToBottom(bottom.current);
+  }, [messages.length, sending]);
   async function chooseImage(event) { const file = event.target.files?.[0]; if (file) setImage(await readFile(file)); }
   function submit() { if (sending || (!text.trim() && !image)) return; onSend(text.trim(), image); setText(''); setImage(''); }
   const modeLabel = consent && aiState.status === 'connected' ? '真实 AI · 当前角色独立上下文' : aiState.status === 'connected' ? '规则演示 · 可开启真实 AI' : '规则演示 · AI 后端未连接';
