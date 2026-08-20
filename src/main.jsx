@@ -9,7 +9,7 @@ import {
 import { loadState, resetState, saveState } from './storage.js';
 import { makeDemoReply, parseChatRecord } from './parser.js';
 import { extractImportText } from './archive.js';
-import { checkAiConnection, requestAiReply } from './api.js';
+import { checkAiConnection, readAiAccessToken, requestAiReply, saveAiAccessToken } from './api.js';
 import { buildPersonaPayload } from './persona.js';
 import { scrollConversationToBottom } from './ui-utils.js';
 import './styles.css';
@@ -127,8 +127,9 @@ function NewPersonModal({ initial, onClose, onSave, onDelete }) {
   </Modal>;
 }
 
-function PrivacyModal({ enabled, ageConfirmed, aiState, onClose, onChange, onRefresh }) {
+function PrivacyModal({ enabled, ageConfirmed, aiState, accessToken, onAccessTokenChange, onClose, onChange, onRefresh }) {
   const connected = aiState.status === 'connected';
+  const canEnable = connected && ageConfirmed && Boolean(accessToken);
   return <Modal onClose={onClose}>
     <button className="icon-button modal-close" onClick={onClose}><X size={19} /></button>
     <div className="privacy-mark"><ShieldCheck /></div>
@@ -136,8 +137,8 @@ function PrivacyModal({ enabled, ageConfirmed, aiState, onClose, onChange, onRef
     <p className="muted modal-intro">“角色隔离”和“回答方式”是两件事：角色始终互相隔离；你可以另外选择使用规则演示或真实 AI 回答。</p>
     <div className="mode-card active"><div className="mode-number"><LockKeyhole size={15} /></div><div><strong>角色隔离</strong><span className="status-pill local">始终开启</span><p>每个角色拥有独立的语言样本、聊天记录、图片和上下文。向 AI 提问时只会组装当前角色的数据，不读取或混入其他角色。</p></div></div>
     <div className="mode-card active"><div className="mode-number">A</div><div><strong>规则演示回答</strong><span className="status-pill local">当前可用</span><p>不调用大模型，不上传聊天内容；只用简单本地规则生成短回复，用于体验界面，不代表真正的智能回答。</p></div></div>
-    <div className={`mode-card ${connected ? 'connected' : 'unavailable'}`}><div className="mode-number">B</div><div><strong>真实 AI 回答</strong><span className={`status-pill ${aiState.status}`}>{aiState.label}</span><p>{connected ? '已启用实时联网能力；模型会在问题需要最新资料时搜索网页，并在回复下方列出来源。每次只发送当前角色的必要上下文。' : 'GitHub Pages 只托管网页前端。真实 AI 需要单独部署项目中的 server，并配置 VITE_API_BASE_URL；API 密钥不能放进网页。'}</p><div className="capability-row"><span><Check size={12} /> 18+ 已确认</span><span><Check size={12} /> 实时联网</span><span><Check size={12} /> 角色隔离</span></div>{!connected && <button className="text-button" onClick={onRefresh}>重新检查连接</button>}</div>
-      <button className={`toggle ${enabled ? 'on' : ''}`} disabled={!connected || !ageConfirmed} onClick={() => onChange(!enabled)} aria-label="切换真实 AI"><span /></button>
+    <div className={`mode-card ${connected ? 'connected' : 'unavailable'}`}><div className="mode-number">B</div><div><strong>真实 AI 回答</strong><span className={`status-pill ${aiState.status}`}>{aiState.label}</span><p>{connected ? '已连接支持上下文理解、图片理解和实时联网的 AI 后端。每次只发送当前角色的必要上下文。' : 'GitHub Pages 只托管网页前端；真实 AI 后端尚未连接，当前不会进行智能回答。'}</p>{connected && <label className="connection-code">AI 连接码<input type="password" autoComplete="off" value={accessToken} onChange={(event) => onAccessTokenChange(event.target.value)} placeholder="仅保存在本次浏览器会话" /><small>{accessToken ? '连接码已填写，可以开启真实 AI。' : '请输入站点管理员提供的连接码。'}</small></label>}<div className="capability-row"><span><Check size={12} /> 18+ 已确认</span><span><Check size={12} /> 实时联网</span><span><Check size={12} /> 角色隔离</span></div>{!connected && <button className="text-button" onClick={onRefresh}>重新检查连接</button>}</div>
+      <button className={`toggle ${enabled ? 'on' : ''}`} disabled={!canEnable} onClick={() => onChange(!enabled)} aria-label="切换真实 AI"><span /></button>
     </div>
     <p className="fine-print"><LockKeyhole size={14} /> 请只导入你有权使用的聊天内容，并尊重对方隐私。</p>
     <button className="button primary full" onClick={onClose}>了解</button>
@@ -236,6 +237,7 @@ function App() {
   const [sending, setSending] = useState(false);
   const [toast, setToast] = useState('');
   const [ageConfirmed, setAgeConfirmed] = useState(savedAgeConfirmation);
+  const [aiAccessToken, setAiAccessToken] = useState(readAiAccessToken);
   const [aiState, setAiState] = useState({ status: 'checking', label: '正在检查 AI 连接' });
   const refreshAi = async () => setAiState(await checkAiConnection());
   useEffect(() => {
@@ -248,7 +250,7 @@ function App() {
     if (!ready) return;
     saveState(state).catch((error) => { console.error(error); setToast('本地保存失败：设备空间可能不足。'); });
   }, [state, ready]);
-  useEffect(() => { if (aiState.status !== 'connected' && consent) setConsent(false); }, [aiState.status, consent]);
+  useEffect(() => { if ((aiState.status !== 'connected' || !aiAccessToken) && consent) setConsent(false); }, [aiState.status, aiAccessToken, consent]);
   const selected = state.people.find((person) => person.id === state.selectedId) ?? null;
   const currentMessages = state.messages[state.selectedId] ?? [];
   const setTracks = (updater) => setState((s) => ({ ...s, tracks: typeof updater === 'function' ? updater(s.tracks) : updater }));
@@ -276,7 +278,7 @@ function App() {
     let aiResult = null;
     try {
       if (consent && aiState.status === 'connected') {
-        aiResult = await requestAiReply(payload);
+        aiResult = await requestAiReply(payload, aiAccessToken);
         reply = aiResult.text;
       } else {
         await new Promise((resolve) => setTimeout(resolve, 650));
@@ -305,7 +307,7 @@ function App() {
     </aside>
     {selected ? <Chat person={selected} messages={currentMessages} onSend={send} sending={sending} consent={consent} aiState={aiState} onEdit={() => setModal('edit')} onOpenAi={() => setModal('privacy')} /> : <EmptyChat onAdd={() => setModal('new')} />}
     {(modal === 'new' || modal === 'edit') && <NewPersonModal initial={modal === 'edit' ? selected : null} onClose={() => setModal(null)} onSave={savePerson} onDelete={() => deletePerson(selected)} />}
-    {modal === 'privacy' && <PrivacyModal enabled={consent} ageConfirmed={ageConfirmed} aiState={aiState} onChange={setConsent} onRefresh={refreshAi} onClose={() => setModal(null)} />}
+    {modal === 'privacy' && <PrivacyModal enabled={consent} ageConfirmed={ageConfirmed} aiState={aiState} accessToken={aiAccessToken} onAccessTokenChange={(value) => setAiAccessToken(saveAiAccessToken(value))} onChange={setConsent} onRefresh={refreshAi} onClose={() => setModal(null)} />}
     {!ageConfirmed && <AgeGate onConfirm={() => { try { sessionStorage.setItem('echo-age-confirmed', 'true'); } catch { /* Session-only confirmation still works. */ } setAgeConfirmed(true); }} />}
     {toast && <div className="toast">{toast}</div>}
   </div>;

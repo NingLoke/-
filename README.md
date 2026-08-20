@@ -65,6 +65,25 @@ npm start
 
 默认生产服务地址为 `http://localhost:8787`，可通过 `PORT` 修改。
 
+## Cloudflare Worker AI 后端
+
+仓库包含 `worker/index.js` 与 `wrangler.jsonc`，可将真实 AI 网关部署到 Cloudflare Workers。Worker 会把 `OPENAI_API_KEY` 留在服务端，并要求额外的 `AI_ACCESS_TOKEN` 连接码，避免公开网页被陌生人直接消耗 API 额度。
+
+Cloudflare 中需要配置两个加密 Secret，绝不能写进仓库：
+
+```text
+OPENAI_API_KEY   OpenAI 项目密钥
+AI_ACCESS_TOKEN  由站点管理员自定的高强度连接码
+```
+
+部署完成后，把 Worker 地址加上 `/api` 作为 Pages 构建变量 `VITE_API_BASE_URL`。例如 Worker 地址为 `https://echo-ai-backend.example.workers.dev`，则前端变量应为：
+
+```text
+VITE_API_BASE_URL=https://echo-ai-backend.example.workers.dev/api
+```
+
+用户在网页的“AI 与隐私”中输入 `AI_ACCESS_TOKEN` 后才能开启真实 AI。连接码只保存在当前浏览器会话；OpenAI 密钥始终不会发送到浏览器。
+
 ## 隐私说明
 
 导入者应确保自己有权使用相关聊天记录、头像和图片。本项目只模拟表达风格，不验证或复制真实身份，也不应被用于冒充、欺骗、骚扰或绕过他人同意。上线前建议补充身份验证、删除/导出数据功能、内容审核、速率限制与正式隐私政策。

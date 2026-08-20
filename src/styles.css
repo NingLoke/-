@@ -161,6 +161,9 @@ nav button:hover,nav .nav-active { color:var(--green); background:#e2e7e2; font-
 .text-button { margin-top:8px; padding:0; border:0; border-bottom:1px solid currentColor; color:var(--green); background:transparent; font-size:9px; cursor:pointer; }
 .capability-row { display:flex; flex-wrap:wrap; gap:6px; margin-top:9px; }
 .capability-row span { display:flex; align-items:center; gap:3px; padding:4px 6px; border-radius:6px; color:#477563; background:#e2ece7; font-size:8px; }
+.connection-code { display:grid; gap:6px; margin-top:12px; color:var(--ink); font-size:10px; font-weight:700; }
+.connection-code input { width:100%; padding:9px 10px; border:1px solid var(--line); border-radius:9px; background:var(--paper); color:var(--ink); }
+.connection-code small { color:var(--muted); font-size:8px; font-weight:400; }
 .toggle { width:44px; height:25px; padding:3px; border:0; border-radius:20px; background:#cbc8c0; cursor:pointer; transition:.2s; }
 .toggle span { display:block; width:19px; height:19px; border-radius:50%; background:#fff; box-shadow:0 2px 5px rgba(0,0,0,.13); transition:.2s; }
 .toggle.on { background:var(--green); }.toggle.on span { transform:translateX(19px); }

@@ -1,6 +1,19 @@
 const configuredBase = import.meta.env.VITE_API_BASE_URL?.trim();
 export const API_BASE = configuredBase ? configuredBase.replace(/\/$/, '') : (import.meta.env.DEV ? '/api' : '');
 
+export function readAiAccessToken() {
+  try { return sessionStorage.getItem('echo-ai-access-token') || ''; } catch { return ''; }
+}
+
+export function saveAiAccessToken(value) {
+  const token = value.trim();
+  try {
+    if (token) sessionStorage.setItem('echo-ai-access-token', token);
+    else sessionStorage.removeItem('echo-ai-access-token');
+  } catch { /* The in-memory value still works for this page. */ }
+  return token;
+}
+
 async function readJson(response) {
   const type = response.headers.get('content-type') || '';
   if (!type.includes('application/json')) throw new Error(`AI 服务返回了无法识别的内容（HTTP ${response.status}）。`);
@@ -21,11 +34,12 @@ export async function checkAiConnection() {
   }
 }
 
-export async function requestAiReply(payload) {
+export async function requestAiReply(payload, accessToken = readAiAccessToken()) {
   if (!API_BASE) throw new Error('当前网页尚未连接 AI 后端。');
+  if (!accessToken) throw new Error('请先在“AI 与隐私”中填写 AI 连接码。');
   const response = await fetch(`${API_BASE}/chat`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json', Authorization: `Bearer ${accessToken}` },
     body: JSON.stringify(payload),
   });
   const data = await readJson(response);
