@@ -35,6 +35,8 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Build
         run: pnpm build
+        env:
+          VITE_BASE_PATH: /-/
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v4
         with:
